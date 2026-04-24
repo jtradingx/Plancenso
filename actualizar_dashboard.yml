@@ -1,0 +1,46 @@
+name: Actualizar Dashboard
+
+on:
+  # ── Ejecutar automáticamente cada día a las 8:00 AM (hora Chile, UTC-3 → 11:00 UTC)
+  schedule:
+    - cron: '0 11 * * *'
+
+  # ── Ejecutar también cuando se sube un archivo .xlsx al repo
+  push:
+    paths:
+      - '**.xlsx'
+      - 'generar_dashboard.py'
+
+  # ── Permitir ejecución manual desde la pestaña "Actions" en GitHub
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: pip install pandas openpyxl requests
+
+      - name: Generar dashboard
+        env:
+          # URL de descarga directa del Excel en OneDrive/SharePoint.
+          # Configurar en: Settings → Secrets → Actions → ONEDRIVE_URL
+          ONEDRIVE_URL: ${{ secrets.ONEDRIVE_URL }}
+        run: python generar_dashboard.py
+
+      - name: Publicar index.html actualizado
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --staged --quiet || git commit -m "Dashboard actualizado $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push
